@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-6">
+    <div id="sessionTimer" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full text-xs font-mono shadow-lg border border-slate-700 flex items-center gap-2">
+        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse" id="statusDot"></span>
+        Logout in: <span id="timerText" class="font-bold text-blue-400">05:00</span>
+    </div>
+
+    <div class="bg-white shadow-2xl rounded-3xl w-full max-w-lg overflow-hidden">
+        <div class="h-32 bg-blue-600 relative">
+            <div class="flex justify-end pt-4 pr-4">
+                <button id="settingsBtn" class="p-2 rounded-lg text-white hover:bg-white/30 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <div id="settingsMenu" class="hidden absolute right-4 mt-12 w-48 bg-white rounded-xl shadow-xl border z-50 overflow-hidden">
+                    <a href="edit-profile.html" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 border-b">Edit Profile</a>
+                    <button onclick="logout()" class="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-8 pb-8">
+            <div class="relative -mt-16 mb-6 flex justify-center">
+                <img id="displayPhoto" src="https://via.placeholder.com/128" 
+                     class="w-32 h-32 rounded-full border-4 border-white object-cover bg-white shadow-md">
+            </div>
+
+            <h1 id="displayName" class="text-3xl font-bold text-center text-slate-800">User Name</h1>
+            <p id="displayEmail" class="text-center text-slate-500 mb-8">example@email.com</p>
+
+            <div class="space-y-4 border-t pt-6">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400 font-medium">User ID</span>
+                    <span id="displayuser_id" class="text-blue-600 font-bold">#00000000</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400 font-medium">Gender</span>
+                    <span id="displayGender" class="text-slate-700 font-semibold">Male/Female/Other</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400 font-medium">Phone Number</span>
+                    <span id="displayPhone" class="text-slate-700 font-semibold">+91 0000000000</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400 font-medium">Date of Birth</span>
+                    <span id="displayDob" class="text-slate-700 font-semibold">YYYY-MM-DD</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400 font-medium">Joining Date</span>
+                    <span id="displayJoinDate" class="text-slate-700 font-semibold">YYYY-MM-DD HH:MM:SS</span>
+                </div>
+                </div>
+        </div>
+    </div>
+
+    <script>
+        function updateTimer() {
+            const sessionStr = localStorage.getItem('currentUser');
+            if (!sessionStr) { window.location.replace('signin.html'); return; }
+
+            const sessionData = JSON.parse(sessionStr);
+            const now = new Date().getTime();
+            const timeLeft = sessionData.expiryTime - now;
+
+            if (timeLeft <= 0) { logout(); return; }
+
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+            document.getElementById('timerText').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            if (timeLeft < 60000) {
+                document.getElementById('timerText').classList.add('text-red-500');
+                document.getElementById('statusDot').classList.replace('bg-green-500', 'bg-red-500');
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.replace('signin.html');
+        }
+
+        // Logic to populate data and start timer
+        document.addEventListener('DOMContentLoaded', () => {
+            const sessionData = JSON.parse(localStorage.getItem('currentUser'));
+            if (!sessionData) { window.location.replace('signin.html'); return; }
+
+            const user = sessionData.user;
+            document.getElementById('displayuser_id').textContent = user.user_id;
+            document.getElementById('displayName').textContent = user.name;
+            document.getElementById('displayEmail').textContent = user.email;
+            document.getElementById('displayGender').textContent = user.gender;
+            document.getElementById('displayPhone').textContent = user.phone;
+            document.getElementById('displayDob').textContent = new Date(user.dob).toLocaleDateString();
+            document.getElementById('displayJoinDate').textContent = new Date(user.join_date).toLocaleString();
+            if (user.photo) document.getElementById('displayPhoto').src = user.photo;
+            
+            setInterval(updateTimer, 1000);
+            updateTimer();
+        });
+
+        // Settings Menu Logic
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsMenu = document.getElementById('settingsMenu');
+        settingsBtn.onclick = (e) => { e.stopPropagation(); settingsMenu.classList.toggle('hidden'); };
+        window.onclick = () => settingsMenu.classList.add('hidden');
+
+        // Security: No Back-button cache
+        window.onpageshow = (e) => { if (e.persisted) window.location.reload(); };
+    </script>
+</body>
+</html>

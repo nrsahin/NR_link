@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 flex justify-center items-center">
+    <div id="sessionTimer" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-full text-xs font-mono shadow-lg border border-slate-700 flex items-center gap-2">
+        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse" id="statusDot"></span>
+        Logout in: <span id="timerText" class="font-bold text-blue-400">05:00</span>
+    </div>
+
+    <div class="bg-white shadow-xl rounded-2xl w-full max-w-md p-8">
+        <div class="flex items-center gap-4 mb-8">
+            <a href="dashboard.html" class="text-slate-400 hover:text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            </a>
+            <h2 class="text-2xl font-bold text-slate-800">Edit Profile</h2>
+        </div>
+
+        <form id="editForm" class="space-y-4">
+            <div class="flex flex-col items-center mb-6">
+                <div class="relative group cursor-pointer" id="photoContainer">
+                    <img id="profile-preview" src="https://via.placeholder.com/128" class="w-24 h-24 rounded-full object-cover border-4 border-slate-100 shadow-md">
+                    <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <span class="text-white text-xs font-bold">Change</span>
+                    </div>
+                </div>
+                <input type="file" id="profile-photo-input" accept="image/*" class="hidden">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="p-3 bg-slate-50 rounded-lg border">
+                    <p class="text-[10px] uppercase text-slate-400 font-bold">User ID</p>
+                    <p id="user_id" class="text-sm font-semibold text-slate-600"></p>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-lg border">
+                    <p class="text-[10px] uppercase text-slate-400 font-bold">Email</p>
+                    <p id="email" class="text-sm font-semibold text-slate-600 truncate"></p>
+                </div>
+            </div>
+
+            <input type="text" id="fullName" placeholder="Full Name" required class="w-full px-4 py-3 rounded-lg bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white text-sm">
+            <input type="date" id="dob" required class="w-full px-4 py-3 rounded-lg bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white text-sm">
+            <select id="gender" class="w-full px-4 py-3 rounded-lg bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white text-sm">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+            </select>
+            <input type="tel" id="phone" placeholder="Phone Number" class="w-full px-4 py-3 rounded-lg bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white text-sm">
+
+            <div class="border-t pt-6 mt-6">
+                <button type="button" onclick="togglePasswordSection()" class="text-sm font-bold text-blue-600 hover:text-blue-800">
+                    🔑 Change Password?
+                </button>
+                
+                <div id="passwordSection" class="hidden space-y-4 mt-4 animate-fade-in">
+                    <input type="password" id="currentPassword" placeholder="Current Password" 
+                        class="w-full px-4 py-3 rounded-lg bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white text-sm">
+                    
+                    <input type="password" id="newPassword" placeholder="New Password " 
+                        class="w-full px-4 py-3 rounded-lg bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white text-sm">
+                    
+                    <input type="password" id="confirmPassword" placeholder="Confirm New Password" 
+                        class="w-full px-4 py-3 rounded-lg bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white text-sm">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200 mt-4">Save Changes</button>
+        </form>
+    </div>
+
+    <div id="cropModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden">
+            <div class="p-4 border-b font-bold">Crop Profile Photo</div>
+            <div class="max-h-[60vh] overflow-hidden bg-slate-200"><img id="cropImg" class="max-w-full block"></div>
+            <div class="p-4 flex gap-3">
+                <button onclick="document.getElementById('cropModal').classList.add('hidden')" class="flex-1 py-2 bg-slate-100 rounded-lg text-sm">Cancel</button>
+                <button id="applyCrop" class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+
+    <script>
+        let cropper, croppedBase64 = "", sessionData = JSON.parse(localStorage.getItem('currentUser'));
+
+        function updateTimer() {
+            if (!sessionData || !sessionData.expiryTime) return;
+            
+            const timeLeft = sessionData.expiryTime - new Date().getTime();
+            if (timeLeft <= 0) {
+                logout();
+                return;
+            }
+
+            const minutes = Math.floor(timeLeft / 60000);
+            const seconds = Math.floor((timeLeft % 60000) / 1000);
+            document.getElementById('timerText').textContent = `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+
+            if (timeLeft < 60000) {
+                document.getElementById('timerText').classList.add('text-red-500');
+                document.getElementById('statusDot').classList.replace('bg-green-500', 'bg-red-500');
+            }
+        }
+
+        function logout() { 
+            localStorage.clear(); 
+            window.location.replace('signin.html'); 
+        }
+
+        // Load data on page start
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!sessionData) { window.location.replace('signin.html'); return; }
+            
+            const user = sessionData.user;
+            
+            // Fill Text/Display Fields
+            document.getElementById('user_id').textContent = user.user_id;
+            document.getElementById('email').textContent = user.email;
+            document.getElementById('fullName').value = user.name || "";
+            document.getElementById('phone').value = user.phone || "";
+            document.getElementById('gender').value = user.gender || "male";
+            
+            // Fix Date formatting (YYYY-MM-DD)
+            if (user.dob) {
+                document.getElementById('dob').value = user.dob.split('T')[0];
+            }
+
+            // Handle Profile Photo
+            if (user.photo) {
+                document.getElementById('profile-preview').src = user.photo;
+                croppedBase64 = user.photo;
+            }
+
+            // Start Security Timer
+            setInterval(updateTimer, 1000);
+            updateTimer();
+        });
+
+        // Toggle Password Visibility
+        function togglePasswordSection() {
+            const section = document.getElementById('passwordSection');
+            section.classList.toggle('hidden');
+            
+        }
+        
+        // Photo Selection and Cropping
+        document.getElementById('photoContainer').onclick = () => document.getElementById('profile-photo-input').click();
+        
+        document.getElementById('profile-photo-input').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                // Fix: Use 'cropImg' to match your HTML ID
+                const image = document.getElementById('cropImg');
+                image.src = event.target.result;
+                document.getElementById('cropModal').classList.remove('hidden');
+                
+                if (cropper) cropper.destroy();
+                cropper = new Cropper(image, { 
+                    aspectRatio: 1, 
+                    viewMode: 1,
+                    dragMode: 'move'
+                });
+            };
+            reader.readAsDataURL(file);
+        };
+
+        document.getElementById('applyCrop').onclick = () => {
+            if (!cropper) return;
+            // Get high-quality base64
+            croppedBase64 = cropper.getCroppedCanvas({ width: 400, height: 400 }).toDataURL('image/jpeg', 0.9);
+            document.getElementById('profile-preview').src = croppedBase64;
+            document.getElementById('cropModal').classList.add('hidden');
+        };
+
+        // Form Submission
+        document.getElementById('editForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            // Verification check before sending
+            if (new Date().getTime() > sessionData.expiryTime) {
+                alert("Session expired. Please log in again.");
+                logout();
+                return;
+            }
+
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+
+            if (newPass && newPass.length < 8) {
+                alert("New password must be at least 8 characters");
+                return;
+            }
+            if (newPass !== confirmPass) {
+                alert("Passwords do not match!");
+                return;
+            }
+
+            const payload = {
+                user_id: sessionData.user.user_id,
+                email: sessionData.user.email,
+                fullName: document.getElementById('fullName').value,
+                dob: document.getElementById('dob').value,
+                gender: document.getElementById('gender').value,
+                phone: document.getElementById('phone').value,
+                photo: croppedBase64,
+                currentPassword: document.getElementById('currentPassword').value, 
+                newPassword: document.getElementById('newPassword').value          
+            };
+
+            try {
+                const res = await fetch(`${CONFIG.API_BASE}/profile/update`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                if(data.success) {
+                    // Update Local Storage with new details
+                    sessionData.user.name = payload.fullName;
+                    sessionData.user.photo = payload.photo;
+                    sessionData.user.phone = payload.phone;
+                    sessionData.user.dob = payload.dob;
+                    sessionData.user.gender = payload.gender;
+                    
+                    localStorage.setItem('currentUser', JSON.stringify(sessionData));
+                    alert("Profile Updated Successfully!");
+                    window.location.href = "dashboard.html";
+                } else { 
+                    alert(data.message || "Update failed"); 
+                }
+            } catch (error) {
+                console.error("Update error:", error);
+                alert("Connection error. Check if server is running.");
+            }
+        };
+    </script>
+</body>
+</html>
